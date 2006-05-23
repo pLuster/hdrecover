@@ -3,7 +3,7 @@ hdrecover
 
 Attempts to recover a hard disk that has bad blocks on it.
 
-WARNING: A hard disk with bad blocks on is likely to fail! If you
+WARNING: A hard disk with bad blocks on it is likely to fail! If you
 value your data you should get a new hard disk instead of using this
 program!
 
@@ -13,7 +13,7 @@ reckless with your data then this tool might just help you out!
 Requirements:
 
 * A 2.6 kernel
-* A dead hard drive
+* A dead hard drive (well one with bad blocks - not completely dead)
 * smartmontools is handy although not strictly needed
 * root access
 
@@ -95,3 +95,140 @@ although hdrecover appears to fix the drive you shouldn't trust it!
 And just to re-inforce the GPL licence: if it in any way breaks your
 computer then you get to keep both pieces! I accept no responsibility
 for any damage it causes!
+
+-------------------------------------------------------------------------------
+
+Sample run:
+
+SMART attribute table before:
+
+SMART Attributes Data Structure revision number: 11
+Vendor Specific SMART Attributes with Thresholds:
+ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
+  1 Raw_Read_Error_Rate     0x0029   100   100   020    Pre-fail  Offline      -       0
+  3 Spin_Up_Time            0x0027   064   063   020    Pre-fail  Always       -       4623
+  4 Start_Stop_Count        0x0032   096   096   008    Old_age   Always       -       2882
+  5 Reallocated_Sector_Ct   0x0033   099   099   020    Pre-fail  Always       -       5
+  7 Seek_Error_Rate         0x000b   100   093   023    Pre-fail  Always       -       0
+  9 Power_On_Hours          0x0012   080   080   001    Old_age   Always       -       13227
+ 10 Spin_Retry_Count        0x0026   100   100   000    Old_age   Always       -       0
+ 11 Calibration_Retry_Count 0x0013   100   090   020    Pre-fail  Always       -       0
+ 12 Power_Cycle_Count       0x0032   097   097   008    Old_age   Always       -       1993
+ 13 Read_Soft_Error_Rate    0x000b   100   093   023    Pre-fail  Always       -       0
+194 Temperature_Celsius     0x0022   078   073   042    Old_age   Always       -       57
+195 Hardware_ECC_Recovered  0x001a   100   100   000    Old_age   Always       -       295108
+196 Reallocated_Event_Count 0x0010   099   099   020    Old_age   Offline      -       1
+197 Current_Pending_Sector  0x0032   100   099   020    Old_age   Always       -       1
+198 Offline_Uncorrectable   0x0010   100   092   000    Old_age   Offline      -       0
+199 UDMA_CRC_Error_Count    0x001a   156   156   000    Old_age   Always       -       44
+
+Notice there is 1 Current_Pending_Sector. Running hdrecover /dev/hdb
+(it happens to be the second IDE drive):
+
+# hdrecover /dev/hdb
+hdrecover version 0.2
+By Steven Price
+
+Disk is 156355584 sectors big
+Sector 28000 (00%) ETR: 1 hours 33 minutes 3 seconds
+Sector 75920 (00%) ETR: 1 hours 8 minutes 36 seconds
+Sector 121520 (00%) ETR: 1 hours 4 minutes 16 seconds
+Sector 169400 (00%) ETR: 1 hours 1 minutes 27 seconds
+Sector 217120 (00%) ETR: 59 minutes 55 seconds
+Failed to read block at sector 257500, investigating futher...
+Error at sector 257505
+Attempting to pounce on it...
+Attempt 1 from sector    117727958: FAILED
+Attempt 2 from sector    149263364: FAILED
+Attempt 3 from sector     84429675: FAILED
+Attempt 4 from sector     81160097: FAILED
+Attempt 5 from sector    156272094: FAILED
+Attempt 6 from sector     75028634: FAILED
+Attempt 7 from sector     63238892: FAILED
+Attempt 8 from sector    116585171: FAILED
+Attempt 9 from sector    102184049: FAILED
+Attempt 10 from sector      5777672: FAILED
+Attempt 11 from sector     81154822: FAILED
+Attempt 12 from sector     69534256: FAILED
+Attempt 13 from sector     90633165: FAILED
+Attempt 14 from sector    150946922: FAILED
+Attempt 15 from sector     18909543: FAILED
+Attempt 16 from sector     29845152: FAILED
+Attempt 17 from sector     24976866: FAILED
+Attempt 18 from sector     52496797: FAILED
+Attempt 19 from sector    104093022: FAILED
+Attempt 20 from sector    127778471: FAILED
+Couldn't recover sector
+The data for this sector could not be recovered. However, destroying the
+contents of this sector (ie writing zeros to it) should cause the hard disk
+to reallocate it making the drive useable again
+Do you want to destroy the sector? [y/n]:
+
+
+/---------\
+| WARNING |
+\---------/
+
+Up until this point you haven't lost any data because of this program
+However, if you say yes below YOU WILL LOSE DATA!
+Proceed at your own risk!
+
+Type 'destroy data' to continue
+destroy data
+
+Wiping sector...
+Checking sector is now readable...
+Sector is now readable. But you have lost data!
+Sector 257520 (00%) ETR: 30 hours 58 minutes 53 seconds
+Sector 290700 (00%) ETR: 27 hours 35 minutes 18 seconds
+
+... (loads more status info) ...
+
+Sector 156197020 (99%) ETR: 3 seconds
+Sector 156242080 (99%) ETR: 2 seconds
+Sector 156287080 (99%) ETR: 1 seconds
+Sector 156332200 (99%) ETR: 0 seconds
+Summary:
+  1 bad sectors found
+  of those 0 were recovered
+  and 1 could not be recovered and were destroyed causing data loss
+
+*****************************************
+* You have wiped a sector on this disk! *
+*****************************************
+*  If you care about the filesystem on  *
+*  this disk you should run fsck on it  *
+*  before mounting it to correct any    *
+*  potential metadata errors            *
+*****************************************
+#
+
+So the sector had to be wiped to recover it. fsck was then run to
+check the metadata wasn't damaged (it wasn't) and smartctl now returns
+the following attribute table:
+
+SMART Attributes Data Structure revision number: 11
+Vendor Specific SMART Attributes with Thresholds:
+ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
+  1 Raw_Read_Error_Rate     0x0029   100   100   020    Pre-fail  Offline      -       0
+  3 Spin_Up_Time            0x0027   064   063   020    Pre-fail  Always       -       4623
+  4 Start_Stop_Count        0x0032   096   096   008    Old_age   Always       -       2882
+  5 Reallocated_Sector_Ct   0x0033   099   099   020    Pre-fail  Always       -       5
+  7 Seek_Error_Rate         0x000b   100   093   023    Pre-fail  Always       -       0
+  9 Power_On_Hours          0x0012   080   080   001    Old_age   Always       -       13227
+ 10 Spin_Retry_Count        0x0026   100   100   000    Old_age   Always       -       0
+ 11 Calibration_Retry_Count 0x0013   100   090   020    Pre-fail  Always       -       0
+ 12 Power_Cycle_Count       0x0032   097   097   008    Old_age   Always       -       1993
+ 13 Read_Soft_Error_Rate    0x000b   100   093   023    Pre-fail  Always       -       0
+194 Temperature_Celsius     0x0022   078   073   042    Old_age   Always       -       57
+195 Hardware_ECC_Recovered  0x001a   100   100   000    Old_age   Always       -       295108
+196 Reallocated_Event_Count 0x0010   099   099   020    Old_age   Offline      -       1
+197 Current_Pending_Sector  0x0032   100   099   020    Old_age   Always       -       0
+198 Offline_Uncorrectable   0x0010   100   092   000    Old_age   Offline      -       0
+199 UDMA_CRC_Error_Count    0x001a   156   156   000    Old_age   Always       -       44
+
+Current_Pending_Sector is now 0 so the drive is 'fixed' (for
+now). Also note that Reallocated_Event_Count hasn't gone up (it was 1
+before). This means that the drive now has confidence in the sector
+that has been overwritten and has not used a spare sector. Whether you
+still have confidence in the drive is another matter!

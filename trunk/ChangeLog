@@ -1,3 +1,10 @@
+2006-05-23  Steven Price  <ecrips@users.sourceforge.net>
+
+	* hdrecover.cpp (main): Split out sector fixing code to
+	correctsector. Now reads BLOCKSIZE (10k) bytes at a time until a
+	read error is encountered and then drops to reading one sector at
+	a time --- which is MUCH faster!
+
 2005-11-26  Steven Price  <ecrips@users.sourceforge.net>
 
 	* First release (V 0.1)
