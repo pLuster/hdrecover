@@ -1,0 +1,97 @@
+hdrecover
+---------
+
+Attempts to recover a hard disk that has bad blocks on it.
+
+WARNING: A hard disk with bad blocks on is likely to fail! If you
+value your data you should get a new hard disk instead of using this
+program!
+
+However, if you can't afford a new hard disk, or just like being
+reckless with your data then this tool might just help you out!
+
+Requirements:
+
+* A 2.6 kernel
+* A dead hard drive
+* smartmontools is handy although not strictly needed
+* root access
+
+When to use:
+
+First of all, if you haven't already got it - go download
+smartmontools! (http://smartmontools.sf.net). Then run:
+
+    smartctl -A /dev/hda
+
+Where hda is whichever drive you're interested in. The output should
+include three attributes that are interesting:
+
+* Reallocated_Event_Count
+
+  This is how many sectors have already been reallocated on the
+  drive. We're hoping to get the hard disk to increase this number!
+
+* Current_Pending_Sector
+
+  The number of sectors that the drive thinks are dodgy. Bear in mind
+  sometimes drives change their mind about whether a sector is bad or
+  not - so this number can go down without a reallocation occuring.
+
+* Offline_Uncorrectable
+
+  This is the number of sectors that the drive has attempted to
+  correct itself, but failed. Running the command:
+
+      smartctl -t offline /dev/hda
+
+  should cause the drive to test the sectors and attempt to fix
+  them. Not all drives support this though.
+
+So the attribute you're interested in at the moment is
+Current_Pending_Sector. If this is not 0 then there's something up
+with your disk. If Offline_Uncorrectable is less than
+Current_Pending_Sectors then you may want to run an offline test which
+may fix it, or you can dive straight in and use hdrecover which will
+test (and attempt to fix) it itself.
+
+So run (as root):
+
+    hdrecover /dev/hda
+
+and sit back and wait (or probably you're best off going and doing
+something else while you wait). If the program comes across a bad
+sector it will make several attempts at reading the sector. Between
+each attempt it will randomly seek so as to reposition the head,
+hopefully getting the data off the disk. If it succeeds then the drive
+should automatically reallocate the sector. If after several attempts
+the data still can't be read then the program will give you the option
+of overwriting the data in the sector. This will force the drive to
+reallocate the block.
+
+WARNING: Overwriting the sector WILL cause data loss (it's fairly
+obvious really!). Hopefully, since it is only one sector (or a handful
+if there are more bad sectors on the drive), it won't be too
+important. But bear in mind that you should at the very least run fsck
+to check the integrity of the filesystem.
+
+Once the program has finished (it takes a long time I'm afraid), a
+summary will be printed showing how many blocks had errors. If you
+repeat the smartctl command:
+
+    smartctl -A /dev/hda
+
+you should see that Current_Pending_Sector is now 0 and
+Reallocated_Event_Count will have risen by the number of sectors the
+drive decided to reallocate. Offline_Uncorrectable usually doesn't
+immediately update - you have to either wait for the drive to update
+it itself or run an offline test which should force the drive to
+update it.
+
+Have fun!
+
+DISCLAIMER: Hard disks with bad sectors could fail at anytime -
+although hdrecover appears to fix the drive you shouldn't trust it!
+And just to re-inforce the GPL licence: if it in any way breaks your
+computer then you get to keep both pieces! I accept no responsibility
+for any damage it causes!
