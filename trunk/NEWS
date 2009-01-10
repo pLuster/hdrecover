@@ -1,3 +1,6 @@
+hdrecover 0.3 -  10th January 2009
+	Improved input handling thanks to patch from Marcel Partap.
+
 hdrecover 0.2 -  23rd May 2006
 	Speed improvement by reading 10k blocks until an error is
 found. Factored out the correctsector function to make code more

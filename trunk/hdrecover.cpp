@@ -36,6 +36,7 @@
 int badblocks = 0;
 int recovered = 0;
 int destroyed = 0;
+int confirm_all = 0;
 int shown_big_warning = 0;
 
 char *buf = 0;
@@ -69,17 +70,34 @@ int correctsector(unsigned long long sectornum)
 	       i + 1, b, (ret == 512) ? "SUCCESS!" : "FAILED");
     }
     if (ret != 512) {
-	printf("Couldn't recover sector\n");
-	printf
-	    ("The data for this sector could not be recovered. However, destroying the\n");
-	printf
-	    ("contents of this sector (ie writing zeros to it) should cause the hard disk\n");
-	printf("to reallocate it making the drive useable again\n");
-	printf("Do you want to destroy the sector? [y/n]:");
-	fgets(buf, 10, stdin);
-	if (*buf != 'y') {
-	    printf("That wasn't a yes, so I'm aborting\n");
-	    return 1;
+	printf("Couldn't recover sector %Ld\n", sectornum);
+	if (!confirm_all) {
+	    printf
+		("The data for this sector could not be recovered. However, destroying the\n");
+	    printf
+		("contents of this sector (ie writing zeros to it) should cause the hard disk\n");
+	    printf("to reallocate it making the drive useable again\n");
+	    printf("Do you really want to destroy the data in sector %Ld?\t [ (y)es / (n)o / (a)ll / (q)uit ]:", sectornum);
+
+	    input:
+	    fgets(buf, 10, stdin);
+	    switch (*buf) {
+		case 'n':
+		    printf("Not wiping sector %Ld, continuing...\n", sectornum);
+		    return 0;
+		case 'q':
+		    printf("Not wiping sector %Ld, exiting.\n", sectornum);
+		    return 1;
+		case 'a':
+		    printf("You requested to wipe all bad sectors without further confirmation.\n");
+		    confirm_all = 1;
+		    break;
+		case 'y':
+		    break;
+		default:
+		    printf("Illegal input '%s', please retry: [ (y)es / (n)o / (a)ll / (q)uit ]:\n", buf);
+		    goto input;
+	    }
 	}
 	if (!shown_big_warning) {
 	    printf("\n\n/---------\\\n");
@@ -98,7 +116,7 @@ int correctsector(unsigned long long sectornum)
 	    shown_big_warning = true;
 	}
 
-	printf("\nWiping sector...\n");
+	printf("\nWiping sector %Ld...\n", sectornum);
 	memset(buf, 0, 512);
 	pwrite(fd, buf, 512, sectornum * 512);
 	destroyed++;
