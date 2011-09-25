@@ -2,3 +2,6 @@ Steven Price wrote the initial version of hdrecover.
 
 Marcel Partap improved hdrecover's input handling and added a 'confirm all'
 option.
+
+Michael Bechtold provided a bug fix for an uninitialised variable which was
+integrated in version 0.4.

@@ -1,6 +1,6 @@
 /* hdrecover
  *
- * Copyright (C) 2006 Steven Price
+ * Copyright (C) 2006-2011 Steven Price
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ unsigned long long length = 0;
 
 int correctsector(unsigned long long sectornum)
 {
-    int ret;
+    int ret = 0;
 
     badblocks++;
     printf("Error at sector %Ld\n", sectornum);
@@ -72,42 +72,46 @@ int correctsector(unsigned long long sectornum)
     if (ret != 512) {
 	printf("Couldn't recover sector %Ld\n", sectornum);
 	if (!confirm_all) {
-	    printf
-		("The data for this sector could not be recovered. However, destroying the\n");
-	    printf
-		("contents of this sector (ie writing zeros to it) should cause the hard disk\n");
+	    printf("The data for this sector could not be recovered. "
+		   "However, destroying the\n");
+	    printf("contents of this sector (ie writing zeros to it) "
+		   "should cause the hard disk\n");
 	    printf("to reallocate it making the drive useable again\n");
-	    printf("Do you really want to destroy the data in sector %Ld?\t [ (y)es / (n)o / (a)ll / (q)uit ]:", sectornum);
+	    printf("Do you really want to destroy the data in sector %Ld?"
+		   "\n [ (y)es / (n)o / (a)ll / (q)uit ]:", sectornum);
 
-	    input:
+	  input:
 	    fgets(buf, 10, stdin);
 	    switch (*buf) {
-		case 'n':
-		    printf("Not wiping sector %Ld, continuing...\n", sectornum);
-		    return 0;
-		case 'q':
-		    printf("Not wiping sector %Ld, exiting.\n", sectornum);
-		    return 1;
-		case 'a':
-		    printf("You requested to wipe all bad sectors without further confirmation.\n");
-		    confirm_all = 1;
-		    break;
-		case 'y':
-		    break;
-		default:
-		    printf("Illegal input '%s', please retry: [ (y)es / (n)o / (a)ll / (q)uit ]:\n", buf);
-		    goto input;
+	    case 'n':
+		printf("Not wiping sector %Ld, continuing...\n", sectornum);
+		return 0;
+	    case 'q':
+		printf("Not wiping sector %Ld, exiting.\n", sectornum);
+		return 1;
+	    case 'a':
+		printf("You requested to wipe all bad sectors "
+		       "without further confirmation.\n");
+		confirm_all = 1;
+		break;
+	    case 'y':
+		break;
+	    default:
+		printf("Illegal input '%s', please retry: "
+		       "[ (y)es / (n)o / (a)ll / (q)uit ]:\n", buf);
+		goto input;
 	    }
 	}
 	if (!shown_big_warning) {
 	    printf("\n\n/---------\\\n");
 	    printf("| WARNING |\n");
 	    printf("\\---------/\n\n");
-	    printf
-		("Up until this point you haven't lost any data because of this program\n");
+	    printf("Up until this point you haven't lost any "
+		   "data because of this program\n");
 	    printf("However, if you say yes below YOU WILL LOSE DATA!\n");
-	    printf("Proceed at your own risk!\n");
-	    printf("\nType 'destroy data' to continue\n");
+	    printf("Proceed at your own risk!\n\n");
+	    printf("Type 'destroy data' to continue "
+		   "(choice valid for all subsequent errors!)\n");
 	    fgets(buf, 50, stdin);
 	    if (strcmp(buf, "destroy data\n")) {
 		printf("You didn't type 'destroy data' so I'm aborting\n");
@@ -125,9 +129,9 @@ int correctsector(unsigned long long sectornum)
 	ret = pread(fd, buf, 512, sectornum * 512);
 	if (ret != 512) {
 	    printf("I still couldn't read the sector!\n");
-	    printf
-		("I'm sorry, but even writing to the sector hasn't fixed it - there's nothing\n"
-		 "more I can do!\n");
+	    printf("I'm sorry, but even writing to the sector hasn't fixed it"
+		   " - there's nothing\n");
+	    printf("more I can do!\n");
 	    sleep(1);
 	    return 1;
 	} else {
@@ -146,8 +150,7 @@ int main(int argc, char **argv, char **envp)
 
     if (sizeof(off_t) != sizeof(unsigned long long)) {
 	printf("Offsets are not 64bit!\n");
-	printf
-	    ("This program must be compiled to have 64 bit file offsets\n");
+	printf("This program must be compiled to have 64 bit file offsets\n");
 	printf("Exiting\n");
 	return 1;
     }
@@ -214,9 +217,8 @@ int main(int argc, char **argv, char **envp)
 	    int endsectornum = sectornum + BLOCKSIZE / 512;
 
 	    if (endsectornum < length) {
-		printf
-		    ("Failed to read block at sector %Ld, investigating futher...\n",
-		     sectornum);
+		printf("Failed to read block at sector %Ld, "
+		       "investigating futher...\n", sectornum);
 	    } else {
 		endsectornum = length;
 	    }
@@ -269,10 +271,9 @@ int main(int argc, char **argv, char **envp)
 	printf("  of those %d were recovered\n", recovered);
     }
     if (destroyed) {
-	printf
-	    ("  and %d could not be recovered and were destroyed causing data loss\n",
-	     destroyed);
-	printf("\n" "*****************************************\n"
+	printf("  and %d could not be recovered and were destroyed "
+	       "causing data loss\n\n", destroyed);
+	printf("*****************************************\n"
 	       "* You have wiped a sector on this disk! *\n"
 	       "*****************************************\n"
 	       "*  If you care about the filesystem on  *\n"
