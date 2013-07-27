@@ -1,6 +1,6 @@
 /* hdrecover
  *
- * Copyright (C) 2006-2011 Steven Price
+ * Copyright (C) 2006-2013 Steven Price
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,14 +30,15 @@
 #include <errno.h>
 #include <string.h>
 #include <time.h>
-
-#define BLOCKSIZE 10240		// (bytes)
+#include <sys/ioctl.h>
+#include <linux/fs.h>
 
 int badblocks = 0;
 int recovered = 0;
 int destroyed = 0;
 int confirm_all = 0;
 int shown_big_warning = 0;
+unsigned int phys_block_size = 0;
 
 char *buf = 0;
 
@@ -54,22 +55,22 @@ int correctsector(unsigned long long sectornum)
     printf("Error at sector %Ld\n", sectornum);
 
     printf("Attempting to pounce on it...\n");
-    for (int i = 0; i < 20 && ret != 512; i++) {
+    for (int i = 0; i < 20 && ret != phys_block_size; i++) {
 	unsigned long long b;
 	read(randfd, &b, sizeof(b));
 	b %= length;
-	ret = pread(fd, buf, 512, b * 512);
+	ret = pread(fd, buf, phys_block_size, b * phys_block_size);
 
-	if (ret != 512) {
+	if (ret != phys_block_size) {
 	    printf("WARNING: Failed to read the random sector!\n");
 	}
 
-	ret = pread(fd, buf, 512, sectornum * 512);
+	ret = pread(fd, buf, phys_block_size, sectornum * phys_block_size);
 
 	printf("Attempt %d from sector %12Ld: %s\n",
-	       i + 1, b, (ret == 512) ? "SUCCESS!" : "FAILED");
+	       i + 1, b, (ret == phys_block_size) ? "SUCCESS!" : "FAILED");
     }
-    if (ret != 512) {
+    if (ret != phys_block_size) {
 	printf("Couldn't recover sector %Ld\n", sectornum);
 	if (!confirm_all) {
 	    printf("The data for this sector could not be recovered. "
@@ -121,13 +122,13 @@ int correctsector(unsigned long long sectornum)
 	}
 
 	printf("\nWiping sector %Ld...\n", sectornum);
-	memset(buf, 0, 512);
-	pwrite(fd, buf, 512, sectornum * 512);
+	memset(buf, 0, phys_block_size);
+	pwrite(fd, buf, phys_block_size, sectornum * phys_block_size);
 	destroyed++;
 
 	printf("Checking sector is now readable...\n");
-	ret = pread(fd, buf, 512, sectornum * 512);
-	if (ret != 512) {
+	ret = pread(fd, buf, phys_block_size, sectornum * phys_block_size);
+	if (ret != phys_block_size) {
 	    printf("I still couldn't read the sector!\n");
 	    printf("I'm sorry, but even writing to the sector hasn't fixed it"
 		   " - there's nothing\n");
@@ -177,14 +178,19 @@ int main(int argc, char **argv, char **envp)
 	return 1;
     }
 
-    if (length % 512) {
-	printf("Block device size isn't a multiple of 512\n");
+    if (ioctl(fd, BLKPBSZGET, &phys_block_size) == -1) {
+        printf("Failed to get physical block size of device\n");
+        return 1;
+    }
+
+    if (length % phys_block_size) {
+	printf("Block device size isn't a multiple of %d\n", phys_block_size);
 	printf("Is it really a block device?\n");
 	printf("Or does it have some strange sector size?\n");
 	printf("Since this is unexpected we won't continue\n");
 	return 1;
     }
-    length /= 512;
+    length /= phys_block_size;
 
     printf("Disk is %Ld sectors big\n", length, errno);
 
@@ -196,25 +202,27 @@ int main(int argc, char **argv, char **envp)
 
     unsigned long long sectornum = 0;
 
-    // Ensure the buffer is 512 byte aligned...
-    buf = (char *) malloc(BLOCKSIZE + 512);
+    int blocksize = phys_block_size * 20;
+
+    // Ensure the buffer is block size byte aligned...
+    buf = (char *) malloc(blocksize + phys_block_size);
     if (!buf) {
 	printf("Failed to allocate buffer!\n");
 	return 1;
     }
-    buf += 512;
-    buf = (char *) ((((unsigned long) buf) / 512) * 512);
+    buf += phys_block_size;
+    buf = (char *) ((((unsigned long) buf) / phys_block_size) * phys_block_size);
     int ret;
 
     while (sectornum < length) {
-	ret = pread(fd, buf, BLOCKSIZE, sectornum * 512);
-	if (ret == BLOCKSIZE) {	// This 10k block is fine
-	    sectornum += BLOCKSIZE / 512;
+	ret = pread(fd, buf, blocksize, sectornum * phys_block_size);
+	if (ret == blocksize) {	// This 20x physical block size block is fine
+	    sectornum += blocksize / phys_block_size;
 	} else {
 	    // Somewhere in this block there's something wrong...
 	    // Or we could just be at the end of the disk
 
-	    int endsectornum = sectornum + BLOCKSIZE / 512;
+	    int endsectornum = sectornum + blocksize / phys_block_size;
 
 	    if (endsectornum < length) {
 		printf("Failed to read block at sector %Ld, "
@@ -223,8 +231,8 @@ int main(int argc, char **argv, char **envp)
 		endsectornum = length;
 	    }
 	    while (sectornum < endsectornum) {
-		ret = pread(fd, buf, 512, sectornum * 512);
-		if (ret != 512) {
+		ret = pread(fd, buf, phys_block_size, sectornum * phys_block_size);
+		if (ret != phys_block_size) {
 		    if (correctsector(sectornum)) {
 			goto summary;
 		    }
