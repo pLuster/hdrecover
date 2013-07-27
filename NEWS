@@ -1,3 +1,7 @@
+hdrecover 0.5 -  27th July 2013
+	Support for large physical block sizes added thanks to patch from
+Rodney Hester.
+
 hdrecover 0.4 -  25th September 2011
 	Fixed use of uninitialised value in correctsector (thanks to
 Michael Bechtold for pointing that out). Added clarification that "destroy

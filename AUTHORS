@@ -5,3 +5,5 @@ option.
 
 Michael Bechtold provided a bug fix for an uninitialised variable which was
 integrated in version 0.4.
+
+Rodney Hester provided support for devices with large physical block sizes.
