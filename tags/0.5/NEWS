@@ -1,0 +1,20 @@
+hdrecover 0.5 -  27th July 2013
+	Support for large physical block sizes added thanks to patch from
+Rodney Hester.
+
+hdrecover 0.4 -  25th September 2011
+	Fixed use of uninitialised value in correctsector (thanks to
+Michael Bechtold for pointing that out). Added clarification that "destroy
+data" applies to subsequent errors as well.
+
+hdrecover 0.3 -  10th January 2009
+	Improved input handling thanks to patch from Marcel Partap.
+
+hdrecover 0.2 -  23rd May 2006
+	Speed improvement by reading 10k blocks until an error is
+found. Factored out the correctsector function to make code more
+readable. Run through 'indent -kr' to tidy it up.
+
+hdrecover 0.1 -  26th November 2005
+	First release!
+
