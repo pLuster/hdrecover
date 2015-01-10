@@ -63,13 +63,13 @@ int correctsector(unsigned long long sectornum)
 	ret = pread(fd, buf, phys_block_size, b * phys_block_size);
 
 	if (ret != phys_block_size) {
-	    printf("WARNING: Failed to read the random sector!\n");
+	    printf("WARNING: Failed to read the random sector %llu!\n", b);
 	}
 
 	ret = pread(fd, buf, phys_block_size, sectornum * phys_block_size);
 
 	printf("Attempt %d from sector %12llu: %s\n",
-	       i + 1, b, (ret == phys_block_size) ? "SUCCESS!" : "FAILED");
+	       i + 1, sectornum, (ret == phys_block_size) ? "SUCCESS!" : "FAILED");
     }
     if (ret != phys_block_size) {
 	printf("Couldn't recover sector %llu\n", sectornum);
