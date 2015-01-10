@@ -21,6 +21,7 @@
 #include <config.h>
 #endif
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -37,7 +38,7 @@ int badblocks = 0;
 int recovered = 0;
 int destroyed = 0;
 int confirm_all = 0;
-int shown_big_warning = 0;
+bool shown_big_warning = 0;
 unsigned int phys_block_size = 0;
 
 char *buf = 0;
