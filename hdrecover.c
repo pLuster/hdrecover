@@ -22,6 +22,7 @@
 #endif
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -37,8 +38,8 @@
 int badblocks = 0;
 int recovered = 0;
 int destroyed = 0;
-int confirm_all = 0;
-bool shown_big_warning = 0;
+bool confirm_all = false;
+bool shown_big_warning = false;
 unsigned int phys_block_size = 0;
 
 char *buf = 0;
@@ -46,55 +47,55 @@ char *buf = 0;
 int fd = 0;
 int randfd = 0;
 
-unsigned long long length = 0;
+int64_t length = 0;
 
-int correctsector(unsigned long long sectornum)
+int correctsector(int64_t sectornum)
 {
-    int ret = 0;
+    ssize_t ret = 0;
 
     badblocks++;
-    printf("Error at sector %llu\n", sectornum);
+    printf("Error at sector %ld\n", sectornum);
 
     printf("Attempting to pounce on it...\n");
     for (int i = 0; i < 20 && ret != phys_block_size; i++) {
-	unsigned long long b;
+	uint64_t b;
 	read(randfd, &b, sizeof(b));
-	b %= length;
-	ret = pread(fd, buf, phys_block_size, b * phys_block_size);
+	b %= (uint64_t)length;
+	ret = pread(fd, buf, phys_block_size, (off_t ) (b * phys_block_size));
 
 	if (ret != phys_block_size) {
-	    printf("WARNING: Failed to read the random sector %llu!\n", b);
+	    printf("WARNING: Failed to read the random sector %lu!\n", b);
 	}
 
 	ret = pread(fd, buf, phys_block_size, sectornum * phys_block_size);
 
-	printf("Attempt %d from sector %12llu: %s\n",
+	printf("Attempt %d from sector %12ld: %s\n",
 	       i + 1, sectornum, (ret == phys_block_size) ? "SUCCESS!" : "FAILED");
     }
     if (ret != phys_block_size) {
-	printf("Couldn't recover sector %llu\n", sectornum);
+	printf("Couldn't recover sector %ld\n", sectornum);
 	if (!confirm_all) {
 	    printf("The data for this sector could not be recovered. "
 		   "However, destroying the\n");
 	    printf("contents of this sector (ie writing zeros to it) "
 		   "should cause the hard disk\n");
 	    printf("to reallocate it making the drive useable again\n");
-	    printf("Do you really want to destroy the data in sector %llu?"
+	    printf("Do you really want to destroy the data in sector %ld?"
 		   "\n [ (y)es / (n)o / (a)ll / (q)uit ]:", sectornum);
 
 	  input:
 	    fgets(buf, 10, stdin);
 	    switch (*buf) {
 	    case 'n':
-		printf("Not wiping sector %llu, continuing...\n", sectornum);
+		printf("Not wiping sector %ld, continuing...\n", sectornum);
 		return 0;
 	    case 'q':
-		printf("Not wiping sector %llu, exiting.\n", sectornum);
+		printf("Not wiping sector %ld, exiting.\n", sectornum);
 		return 1;
 	    case 'a':
 		printf("You requested to wipe all bad sectors "
 		       "without further confirmation.\n");
-		confirm_all = 1;
+		confirm_all = true;
 		break;
 	    case 'y':
 		break;
@@ -122,7 +123,7 @@ int correctsector(unsigned long long sectornum)
 	    shown_big_warning = true;
 	}
 
-	printf("\nWiping sector %llu...\n", sectornum);
+	printf("\nWiping sector %ld...\n", sectornum);
 	memset(buf, 0, phys_block_size);
 	pwrite(fd, buf, phys_block_size, sectornum * phys_block_size);
 	destroyed++;
@@ -150,8 +151,8 @@ int main(int argc, char **argv, char **envp)
     printf(PACKAGE " version " VERSION "\n");
     printf("By Steven Price\n\n");
 
-    if (sizeof(off_t) != sizeof(unsigned long long)) {
-	printf("Offsets are not 64bit!\n");
+    if (sizeof(off_t) != sizeof(int64_t)) {
+	printf("Offsets are not 64 bit!\n");
 	printf("This program must be compiled to have 64 bit file offsets\n");
 	printf("Exiting\n");
 	return 1;
@@ -193,7 +194,7 @@ int main(int argc, char **argv, char **envp)
     }
     length /= phys_block_size;
 
-    printf("Disk is %llu sectors big\n", length);
+    printf("Disk is %ld sectors big\n", length);
 
     time_t starttime;
     time(&starttime);
@@ -201,19 +202,19 @@ int main(int argc, char **argv, char **envp)
     time_t lasttime;
     time(&lasttime);
 
-    unsigned long long sectornum = 0;
+    int64_t sectornum = 0;
 
     int blocksize = phys_block_size * 20;
 
     // Ensure the buffer is block size byte aligned...
-    buf = (char *) malloc(blocksize + phys_block_size);
+    buf = malloc(blocksize + phys_block_size);
     if (!buf) {
 	printf("Failed to allocate buffer!\n");
 	return 1;
     }
     buf += phys_block_size;
     buf = (char *) ((((unsigned long) buf) / phys_block_size) * phys_block_size);
-    int ret;
+    ssize_t ret;
 
     while (sectornum < length) {
 	ret = pread(fd, buf, blocksize, sectornum * phys_block_size);
@@ -223,10 +224,10 @@ int main(int argc, char **argv, char **envp)
 	    // Somewhere in this block there's something wrong...
 	    // Or we could just be at the end of the disk
 
-	    int endsectornum = sectornum + blocksize / phys_block_size;
+	    int64_t endsectornum = sectornum + blocksize / phys_block_size;
 
 	    if (endsectornum < length) {
-		printf("Failed to read block at sector %llu, "
+		printf("Failed to read block at sector %ld, "
 		       "investigating futher...\n", sectornum);
 	    } else {
 		endsectornum = length;
@@ -249,7 +250,7 @@ int main(int argc, char **argv, char **envp)
 	    if (sectornum > 0) {
 		time_t now;
 		time(&now);
-		unsigned long long remaining = now - starttime;
+		int64_t remaining = now - starttime;
 		remaining *= length;
 		remaining /= sectornum;
 		remaining -= (now - starttime);
@@ -257,18 +258,18 @@ int main(int argc, char **argv, char **envp)
 		char *p = rs;
 
 		if (remaining > 3600) {
-		    sprintf(p, "%llu hours ", remaining / 3600);
+		    sprintf(p, "%ld hours ", remaining / 3600);
 		    p += strlen(p);
 		    remaining %= 3600;
 		}
 		if (remaining > 60) {
-		    sprintf(p, "%llu minutes ", remaining / 60);
+		    sprintf(p, "%ld minutes ", remaining / 60);
 		    p += strlen(p);
 		    remaining %= 60;
 		}
-		sprintf(p, "%llu seconds", remaining);
+		sprintf(p, "%ld seconds", remaining);
 	    }
-	    printf("Sector %llu (%02d%%) ETR: %s\n",
+	    printf("Sector %ld (%02d%%) ETR: %s\n",
 		   sectornum, (int) ((sectornum * 100) / length), rs);
 	}
     }
