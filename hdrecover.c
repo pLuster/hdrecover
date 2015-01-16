@@ -23,6 +23,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -42,7 +43,7 @@ bool confirm_all = false;
 bool shown_big_warning = false;
 unsigned int phys_block_size = 0;
 
-char *buf = 0;
+char *buf = NULL;
 
 int fd = 0;
 int randfd = 0;
@@ -207,17 +208,13 @@ int main(int argc, char **argv, char **envp)
     int blocksize = phys_block_size * 20;
 
     // Ensure the buffer is block size byte aligned...
-    buf = malloc(blocksize + phys_block_size);
-    if (!buf) {
+    if (posix_memalign((void **) &buf, phys_block_size, blocksize)) {
 	fprintf(stderr, "Failed to allocate buffer!\n");
 	return 1;
     }
-    buf += phys_block_size;
-    buf = (char *) ((((unsigned long) buf) / phys_block_size) * phys_block_size);
-    ssize_t ret;
 
     while (sectornum < length) {
-	ret = pread(fd, buf, blocksize, sectornum * phys_block_size);
+	ssize_t ret = pread(fd, buf, blocksize, sectornum * phys_block_size);
 	if (ret == blocksize) {	// This 20x physical block size block is fine
 	    sectornum += blocksize / phys_block_size;
 	} else {
