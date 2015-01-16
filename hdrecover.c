@@ -152,44 +152,44 @@ int main(int argc, char **argv, char **envp)
     printf("By Steven Price\n\n");
 
     if (sizeof(off_t) != sizeof(int64_t)) {
-	printf("Offsets are not 64 bit!\n");
-	printf("This program must be compiled to have 64 bit file offsets\n");
-	printf("Exiting\n");
+	fprintf(stderr, "Offsets are not 64 bit!\n");
+	fprintf(stderr, "This program must be compiled to have 64 bit file offsets\n");
+	fprintf(stderr, "Exiting\n");
 	return 1;
     }
     if (argc != 2) {
-	printf("Usage %s <block device>\n", *argv);
+	fprintf(stderr, "Usage %s <block device>\n", *argv);
 	return 1;
     }
     fd = open(argv[1], O_RDWR | O_DIRECT);
     if (fd < 0) {
-	printf("Failed to open file '%s'\n", argv[1]);
+	fprintf(stderr, "Failed to open file '%s': %s\n", argv[1], strerror(errno));
 	return 1;
     }
 
     randfd = open("/dev/urandom", O_RDONLY);
     if (randfd < 0) {
-	printf("Failed to open urandom device\n");
+	fprintf(stderr, "Failed to open urandom device: %s\n", strerror(errno));
 	return 1;
     }
 
     length = lseek(fd, 0, SEEK_END);
 
     if (length == -1) {
-	printf("Failed to get size of block device\n");
+	fprintf(stderr, "Failed to get size of block device: %s\n", strerror(errno));
 	return 1;
     }
 
     if (ioctl(fd, BLKPBSZGET, &phys_block_size) == -1) {
-        printf("Failed to get physical block size of device\n");
-        return 1;
+	fprintf(stderr, "Failed to get physical block size of device: %s\n", strerror(errno));
+	return 1;
     }
 
     if (length % phys_block_size) {
-	printf("Block device size isn't a multiple of %d\n", phys_block_size);
-	printf("Is it really a block device?\n");
-	printf("Or does it have some strange sector size?\n");
-	printf("Since this is unexpected we won't continue\n");
+	fprintf(stderr, "Block device size isn't a multiple of %d\n", phys_block_size);
+	fprintf(stderr, "Is it really a block device?\n");
+	fprintf(stderr, "Or does it have some strange sector size?\n");
+	fprintf(stderr, "Since this is unexpected we won't continue\n");
 	return 1;
     }
     length /= phys_block_size;
@@ -209,7 +209,7 @@ int main(int argc, char **argv, char **envp)
     // Ensure the buffer is block size byte aligned...
     buf = malloc(blocksize + phys_block_size);
     if (!buf) {
-	printf("Failed to allocate buffer!\n");
+	fprintf(stderr, "Failed to allocate buffer!\n");
 	return 1;
     }
     buf += phys_block_size;
@@ -228,7 +228,7 @@ int main(int argc, char **argv, char **envp)
 
 	    if (endsectornum < length) {
 		printf("Failed to read block at sector %ld, "
-		       "investigating futher...\n", sectornum);
+		       "investigating further...\n", sectornum);
 	    } else {
 		endsectornum = length;
 	    }
@@ -289,7 +289,7 @@ int main(int argc, char **argv, char **envp)
 	       "*  If you care about the filesystem on  *\n"
 	       "*  this disk you should run fsck on it  *\n"
 	       "*  before mounting it to correct any    *\n"
-	       "*  potential metadata errors            *\n"
+	       "*  potential metadata errors.           *\n"
 	       "*****************************************\n\n");
 	return 10;
     }
