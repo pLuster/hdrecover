@@ -171,13 +171,20 @@ int main(int argc, char **argv, char **envp)
     int64_t logical_end_block = 0;
 
     int opt;
-    while ((opt = getopt(argc, argv, "s:e:")) != -1) {
+    while ((opt = getopt(argc, argv, "s:e:d:")) != -1) {
 	switch (opt) {
 	case 's':
 	    logical_start_block = atoll(optarg);
 	    break;
 	case 'e':
 	    logical_end_block = atoll(optarg);
+	    break;
+	case 'd':
+	    if (!strcmp("DESTROY", optarg)) {
+		confirm_all = true;
+		shown_big_warning = true;
+		printf("Destructive mode enabled!\n");
+	    }
 	    break;
 	default:
 	    usage();
