@@ -59,13 +59,12 @@ int correctsector(int64_t sectornum)
 
     printf("Attempting to pounce on it...\n");
     for (int i = 0; i < 20 && ret != phys_block_size; i++) {
-	uint64_t b;
-	read(randfd, &b, sizeof(b));
-	b %= (uint64_t)length;
-	ret = pread(fd, buf, phys_block_size, (off_t ) (b * phys_block_size));
+	long int b = random();
+	b = ((double)length / RAND_MAX) * b;
+	ret = pread(fd, buf, phys_block_size, b * phys_block_size);
 
 	if (ret != phys_block_size) {
-	    printf("WARNING: Failed to read the random sector %lu!\n", b);
+	    printf("WARNING: Failed to read the random sector %ld!\n", b);
 	}
 
 	ret = pread(fd, buf, phys_block_size, sectornum * phys_block_size);
@@ -168,11 +167,7 @@ int main(int argc, char **argv, char **envp)
 	return 1;
     }
 
-    randfd = open("/dev/urandom", O_RDONLY);
-    if (randfd < 0) {
-	fprintf(stderr, "Failed to open urandom device: %s\n", strerror(errno));
-	return 1;
-    }
+    srandom(time(NULL));
 
     length = lseek(fd, 0, SEEK_END);
 
@@ -240,7 +235,7 @@ int main(int argc, char **argv, char **envp)
 	    }
 	}
 
-	if (time(0) != lasttime) {
+	if (time(NULL) != lasttime) {
 	    time(&lasttime);
 	    char rs[256];
 	    *rs = 0;
