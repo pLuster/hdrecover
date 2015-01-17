@@ -36,6 +36,8 @@
 #include <sys/ioctl.h>
 #include <linux/fs.h>
 
+const char *program_name;
+
 int badblocks = 0;
 int recovered = 0;
 int destroyed = 0;
@@ -46,7 +48,6 @@ unsigned int phys_block_size = 0;
 char *buf = NULL;
 
 int fd = 0;
-int randfd = 0;
 
 int64_t length = 0;
 
@@ -146,6 +147,13 @@ int correctsector(int64_t sectornum)
     return 0;
 }
 
+void usage()
+{
+    fprintf(stderr, "Usage: %s [-s <logical start block>] [-e <logical end block>] <block device>\n",
+	    program_name);
+    exit(EXIT_FAILURE);
+}
+
 int main(int argc, char **argv, char **envp)
 {
     printf(PACKAGE " version " VERSION "\n");
@@ -157,13 +165,31 @@ int main(int argc, char **argv, char **envp)
 	fprintf(stderr, "Exiting\n");
 	return 1;
     }
-    if (argc != 2) {
-	fprintf(stderr, "Usage %s <block device>\n", *argv);
-	return 1;
+
+    program_name = argv[0];
+    int64_t logical_start_block = 0;
+    int64_t logical_end_block = 0;
+
+    int opt;
+    while ((opt = getopt(argc, argv, "s:e:")) != -1) {
+	switch (opt) {
+	case 's':
+	    logical_start_block = atoll(optarg);
+	    break;
+	case 'e':
+	    logical_end_block = atoll(optarg);
+	    break;
+	default:
+	    usage();
+	}
     }
-    fd = open(argv[1], O_RDWR | O_DIRECT);
+
+    if (optind > argc - 1)
+	usage();
+
+    fd = open(argv[optind], O_RDWR | O_DIRECT);
     if (fd < 0) {
-	fprintf(stderr, "Failed to open file '%s': %s\n", argv[1], strerror(errno));
+	fprintf(stderr, "Failed to open device '%s': %s\n", argv[optind], strerror(errno));
 	return 1;
     }
 
@@ -190,7 +216,15 @@ int main(int argc, char **argv, char **envp)
     }
     length /= phys_block_size;
 
-    printf("Disk is %ld sectors big\n", length);
+    unsigned int logical_block_size = 0;
+    if (ioctl(fd, BLKSSZGET, &logical_block_size) == -1) {
+	fprintf(stderr, "Failed to get logical block size of device: %s\n", strerror(errno));
+	return 1;
+    }
+
+    printf("Logical sector size is %u bytes\n", logical_block_size);
+    printf("Physical sector size is %u bytes\n", phys_block_size);
+    printf("Disk is %ld physical sectors big\n", length);
 
     time_t starttime;
     time(&starttime);
@@ -198,7 +232,23 @@ int main(int argc, char **argv, char **envp)
     time_t lasttime;
     time(&lasttime);
 
-    int64_t sectornum = 0;
+    int64_t sectornum = logical_start_block / (phys_block_size / logical_block_size);
+
+    if (logical_end_block) {
+	int64_t new_length = logical_end_block / (phys_block_size / logical_block_size);
+
+	if (new_length > length) {
+	    fprintf(stderr, "Logical end block is out of range!\n");
+	    return 1;
+	}
+	else
+	    length = new_length;
+    }
+
+    if (sectornum >= length) {
+	fprintf(stderr, "Logical start block is out of range!\n");
+	return 1;
+    }
 
     int blocksize = phys_block_size * 20;
 
